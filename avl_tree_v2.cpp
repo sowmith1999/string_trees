@@ -51,12 +51,12 @@ AVLNode* get_succ(AVLNode* node) {
     assert(false && "Node doesn't have any successors");
 }
 
-void sanitize(AVLNode* node){
-    if(node->left != nullptr){
+void sanitize(AVLNode* node) {
+    if (node->left != nullptr) {
         assert((node->left->parent == node) && "Left parent pointer issue");
         sanitize(node->left);
     }
-    if(node->right != nullptr){
+    if (node->right != nullptr) {
         assert((node->right->parent == node) && "Right parent pointer issue");
         sanitize(node->right);
     }
@@ -107,15 +107,25 @@ void update_augments(AVLNode* naya) {
 }
 
 AVLNode* subtree_at(AVLNode* node, uint32_t idx) {
-    if (idx == 0)
-        return node;
-    uint32_t soize = node->left->size;
-    if (idx < soize)
-        return subtree_at(node->left, idx);
-    else if (idx > soize)
-        return subtree_at(node->right, idx - soize - 1);
-    assert(false && "The index doesn't exist in the tree");
-    return nullptr;
+    // assert((node != nullptr) && "Index is out of bounds, node is null");
+    // assert((get_size(node)>=idx) && "Index is out of bounds, idx is too big");
+    if (node == nullptr || idx > get_size(node))
+        return nullptr;
+    AVLNode* cur = node;
+    AVLNode* par = nullptr;
+    while (idx > 0) {
+        uint32_t soize = get_size(cur->left);
+        if (idx < soize) {
+            par = cur;
+            cur = cur->left;
+        } else if (idx > soize) {
+            par = cur;
+            cur = cur->right;
+            idx = idx - soize - 1;
+        } else
+            return cur;
+    }
+    return par;
 }
 
 // rot
@@ -127,6 +137,8 @@ void rotate(AVLTree* tree, AVLNode* node, bool rot) {
         // left child definitely exists
         AVLNode* rep_node = node->left;
         node->left = rep_node->right;
+        if (node->left != nullptr)
+            node->left->parent = node;
         rep_node->right = node;
         transplant(tree, node, rep_node);
         node->parent = rep_node;
@@ -135,11 +147,14 @@ void rotate(AVLTree* tree, AVLNode* node, bool rot) {
     else if (rot == false) {
         AVLNode* rep_node = node->right;
         node->right = rep_node->left;
+        if (node->right != nullptr)
+            node->right->parent = node;
         rep_node->left = node;
         transplant(tree, node, rep_node);
         node->parent = rep_node;
     }
     update_augments(node);
+    sanitize(tree->root);
 }
 
 // simple, check the skew, if it is in {+1, 0, -1}
@@ -170,30 +185,37 @@ void rebalance(AVLTree* tree, AVLNode* node) {
         return rebalance(tree, node->parent);
     return;
 }
+
+void insert_first(AVLTree* tree, AVLNode* cur_root, AVLNode* naya) {
+    assert((cur_root != nullptr) && "sub tree passed is nullptr");
+    if (cur_root->left == nullptr) {
+        cur_root->left = naya;
+        naya->parent = cur_root;
+    } else
+        insert_first(tree, cur_root->left, naya);
+}
+
+void insert_last(AVLTree* tree, AVLNode* cur_root, AVLNode* naya) {
+    assert((cur_root != nullptr) && "sub tree passed is nullptr");
+    if (cur_root->right == nullptr) {
+        cur_root->right = naya;
+        naya->parent = cur_root;
+    } else
+        insert_last(tree, cur_root->right, naya);
+}
+
 void insert_node(AVLTree* tree, int32_t val, uint32_t idx) {
     AVLNode* naya = init_AVLNode(val);
-    AVLNode* cur = nullptr;
-    AVLNode* temp = tree->root;
-    while (temp != nullptr) {
-        cur = temp; // stores the to be parent
-        if (idx < cur->size) {
-            temp = temp->left;
-        } else {
-            temp = temp->right;
-            idx = idx - cur->size - 1;
-        }
-    }
-    naya->parent = cur;
-    if (cur == nullptr)
+    AVLNode* parent = subtree_at(tree->root, idx);
+    if (parent == nullptr)
         tree->root = naya;
-    else if (idx < cur->size)
-        cur->left = naya;
-    else
-        cur->right = naya;
+    else if (parent->right == nullptr) {
+        parent->right = naya;
+        naya->parent = parent;
+    } else
+        insert_first(tree, parent->right, naya);
     update_augments(naya);
     rebalance(tree, naya);
-    traversal(tree->root);
-    sanitize(tree->root);
 }
 
 void delete_node(AVLTree* tree, uint32_t idx) {
@@ -230,8 +252,6 @@ void delete_node(AVLTree* tree, uint32_t idx) {
     }
 }
 
-
-
 int main() {
     AVLTree* tree = new AVLTree();
     insert_node(tree, 1, 0);
@@ -242,6 +262,7 @@ int main() {
     insert_node(tree, 6, 5);
     insert_node(tree, 7, 6);
     traversal(tree->root);
+    std::cout << std::endl;
     delete_node(tree, 2);
     traversal(tree->root);
     std::cout << std::endl;

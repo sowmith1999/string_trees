@@ -29,6 +29,48 @@ uint32_t compute_skew(AVLNode* node) {
     return get_height(node->right) - get_height(node->left);
 }
 
+bool is_leftchild(AVLNode* node) {
+    if (node->parent == nullptr)
+        return false;
+    if (node->parent->left == node)
+        return true;
+    return false;
+}
+
+AVLNode* get_leftmost(AVLNode* node) {
+    if (node->left == nullptr)
+        return node;
+    return get_leftmost(node->left);
+}
+
+AVLNode* get_succ(AVLNode* node) {
+    if (node->right != nullptr)
+        return get_leftmost(node->right);
+    else if (is_leftchild(node))
+        return node->parent;
+    assert(false && "Node doesn't have any successors");
+}
+
+void sanitize(AVLNode* node){
+    if(node->left != nullptr){
+        assert((node->left->parent == node) && "Left parent pointer issue");
+        sanitize(node->left);
+    }
+    if(node->right != nullptr){
+        assert((node->right->parent == node) && "Right parent pointer issue");
+        sanitize(node->right);
+    }
+}
+
+void traversal(AVLNode* tree) {
+    if (tree->left != nullptr)
+        traversal(tree->left);
+    std::cout << " , " << tree->val;
+    if (tree->right != nullptr) {
+        traversal(tree->right);
+    }
+}
+
 typedef struct AVLTree {
     AVLNode* root = nullptr;
 } AVLTree;
@@ -65,14 +107,14 @@ void update_augments(AVLNode* naya) {
 }
 
 AVLNode* subtree_at(AVLNode* node, uint32_t idx) {
-    if(idx == 0)
+    if (idx == 0)
         return node;
     uint32_t soize = node->left->size;
     if (idx < soize)
         return subtree_at(node->left, idx);
     else if (idx > soize)
         return subtree_at(node->right, idx - soize - 1);
-    assert(false && "This case shouldn't be reached at all");
+    assert(false && "The index doesn't exist in the tree");
     return nullptr;
 }
 
@@ -150,16 +192,45 @@ void insert_node(AVLTree* tree, int32_t val, uint32_t idx) {
         cur->right = naya;
     update_augments(naya);
     rebalance(tree, naya);
+    traversal(tree->root);
+    sanitize(tree->root);
 }
 
-void traversal(AVLNode* tree) {
-    if (tree->left != nullptr)
-        traversal(tree->left);
-    std::cout << " , " << tree->val;
-    if (tree->right != nullptr) {
-        traversal(tree->right);
+void delete_node(AVLTree* tree, uint32_t idx) {
+    AVLNode* node = subtree_at(tree->root, idx);
+
+    // leaf case
+    if (node->left == nullptr && node->right == nullptr)
+        transplant(tree, node, nullptr);
+    else if (node->left != nullptr && node->right == nullptr)
+        transplant(tree, node, node->left);
+    else if (node->left == nullptr && node->right != nullptr)
+        transplant(tree, node, node->right);
+    // Two child cases
+    else if (node->left != nullptr) {
+        AVLNode* succ = get_succ(node);
+        if (succ == node->right) {
+            assert(node->right->left == nullptr && "successor shouldn't have a left child");
+            transplant(tree, node, succ);
+            succ->left = node->left;
+            succ->left->parent = succ;
+            assert((succ->parent == node->parent) && "succ parent isn't right");
+        } else if (succ != node->right) {
+            transplant(tree, succ, succ->right);
+            assert(succ->right->parent == succ->parent && "succ.right parent is not set");
+            transplant(tree, node, succ);
+            succ->right = node->right;
+            succ->left = node->left;
+            succ->right->parent = succ;
+            succ->left->parent = succ;
+        }
+        update_augments(succ);
+        rebalance(tree, succ);
+        free(node);
     }
 }
+
+
 
 int main() {
     AVLTree* tree = new AVLTree();
@@ -170,6 +241,8 @@ int main() {
     insert_node(tree, 5, 4);
     insert_node(tree, 6, 5);
     insert_node(tree, 7, 6);
+    traversal(tree->root);
+    delete_node(tree, 2);
     traversal(tree->root);
     std::cout << std::endl;
     insert_node(tree, 12, 3);

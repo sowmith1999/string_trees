@@ -10,9 +10,7 @@
 
 constexpr std::size_t SHORT_MAX = 12;
 
-void print_char_array(const char* arr, size_t length) {
-    fwrite(arr, sizeof(char), length, stdout);
-}
+void print_char_array(const char* arr, size_t length) { fwrite(arr, sizeof(char), length, stdout); }
 
 typedef struct {
     uint32_t length; // 4 bytes for length
@@ -21,7 +19,7 @@ typedef struct {
             char data[12]; // 12 bytes for short string data
         } short_str;
         struct {
-            char prefix[4];   // 4 bytes for prefix
+            char prefix[4];      // 4 bytes for prefix
             const char* pointer; // 8 bytes for pointer/offset
         } long_str;
     } content;
@@ -32,7 +30,7 @@ void init_uString(uString* str, const char* data) {
     str->length = length;
     std::cout << "the length is " << length << std::endl;
 
-    if(length <= SHORT_MAX){
+    if (length <= SHORT_MAX) {
         memcpy(str->content.short_str.data, data, length);
     } else {
         memcpy(str->content.long_str.prefix, data, 4);
@@ -40,16 +38,16 @@ void init_uString(uString* str, const char* data) {
     }
 }
 
-void print_uString(uString* str){
-    if(str->length <=12){
+void print_uString(uString* str) {
+    if (str->length <= 12) {
         std::cout << str->content.short_str.data << std::endl;
-    } else{
-        std:: cout << "Prefix: " << str->content.long_str.prefix << std::endl;
+    } else {
+        std::cout << "Prefix: " << str->content.long_str.prefix << std::endl;
         print_char_array(str->content.long_str.pointer, str->length);
     }
 }
 
-int main(){
+int main() {
     const char arr[] = "Welcome World!";
     // const char arr[] = "Hello!";
     uString* str = (uString*)malloc(sizeof(uString));

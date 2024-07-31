@@ -52,6 +52,8 @@ AVLNode* get_succ(AVLNode* node) {
 }
 
 void sanitize(AVLNode* node) {
+    if (node == nullptr)
+        return;
     if (node->left != nullptr) {
         assert((node->left->parent == node) && "Left parent pointer issue");
         sanitize(node->left);
@@ -113,7 +115,7 @@ AVLNode* subtree_at(AVLNode* node, uint32_t idx) {
         return nullptr;
     AVLNode* cur = node;
     AVLNode* par = nullptr;
-    while (idx > 0) {
+    while (idx >= 0 && cur != nullptr) {
         uint32_t soize = get_size(cur->left);
         if (idx < soize) {
             par = cur;
@@ -163,7 +165,7 @@ void rebalance(AVLTree* tree, AVLNode* node) {
     assert((node != nullptr) && "Node passed to rebalance is nullptr");
     int32_t skew = compute_skew(node);
     if (skew == 2) {
-        uint32_t rc_skew = compute_skew(node->right);
+        int32_t rc_skew = compute_skew(node->right);
         if (rc_skew == 0 || rc_skew == 1) {
             rotate(tree, node, false);
         } else if (rc_skew == -1) {
@@ -171,10 +173,10 @@ void rebalance(AVLTree* tree, AVLNode* node) {
             rotate(tree, node, false);
         }
     } else if (skew == -2) {
-        uint32_t lc_skew = compute_skew(node->left);
-        if (lc_skew == 0 || lc_skew == 1) {
+        int32_t lc_skew = compute_skew(node->left);
+        if (lc_skew == 0 || lc_skew == -1) {
             rotate(tree, node, true);
-        } else if (lc_skew == -1) {
+        } else if (lc_skew == 1) {
             rotate(tree, node->left, false);
             rotate(tree, node, true);
         }
@@ -252,24 +254,67 @@ void delete_node(AVLTree* tree, uint32_t idx) {
     }
 }
 
-int main() {
+void tree_printer(AVLNode* node) {
+    std::cout << "(";
+    if (node == nullptr) {
+        std::cout << " )";
+        return;
+    }
+    std::cout << node->val;
+    if (node->left == nullptr)
+        std::cout << "()";
+    else
+        tree_printer(node->left);
+    if (node->right == nullptr)
+        std::cout << "()";
+    else
+        tree_printer(node->right);
+    std::cout << ")";
+    return;
+}
+
+// adds numbers in insert_last fashion, traverses and delete them
+bool test_1() {
     AVLTree* tree = new AVLTree();
-    insert_node(tree, 1, 0);
-    insert_node(tree, 2, 1);
-    insert_node(tree, 3, 2);
-    insert_node(tree, 4, 3);
-    insert_node(tree, 5, 4);
-    insert_node(tree, 6, 5);
-    insert_node(tree, 7, 6);
-    traversal(tree->root);
-    std::cout << std::endl;
-    delete_node(tree, 2);
-    traversal(tree->root);
-    std::cout << std::endl;
-    insert_node(tree, 12, 3);
-    traversal(tree->root);
-    std::cout << std::endl;
-    printf("Boom\n");
-    printf("The root is %d\n", tree->root->val);
-    std::cout << subtree_at(tree->root, 2)->val << std::endl;
+    for (int i = 0; i < 10; i++) {
+        insert_node(tree, i, i);
+        sanitize(tree->root);
+    }
+    // subtree checking
+    for (uint32_t i = 0; i < 10; i++) {
+        AVLNode* cur = subtree_at(tree->root, i);
+        assert((cur->val == i) && "traversal order doesn't match");
+    }
+    for (int i = 9; i >= 0; i--) {
+        delete_node(tree, i);
+        sanitize(tree->root);
+        for (uint32_t j = 0; j < i; j++) {
+            AVLNode* cur = subtree_at(tree->root, j);
+            assert((cur->val == j) && "traversal order doesn't match");
+        }
+    }
+    assert((tree->root == nullptr) && "tree is not empty");
+    return true;
+}
+
+bool test_2() {
+    printf("Test 2:\n");
+    AVLTree* tree = new AVLTree();
+    for (int i = 0; i < 10; i++) {
+        insert_node(tree, i, 0);
+        sanitize(tree->root);
+    }
+
+    for (int i = 9; i >= 0; i--) {
+        traversal(tree->root);
+        std::cout << std::endl;
+        delete_node(tree, 0);
+        sanitize(tree->root);
+    }
+    return true;
+}
+
+int main() {
+    test_1();
+    test_2();
 }
